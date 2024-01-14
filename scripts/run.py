@@ -248,8 +248,8 @@ def runRandoopTestGenOnOneResetter(resetter_fqn, project_name, project_sha,
         print('Randoop Format Resetter FQN: ' + randoop_fmt_resetter_fqn)
         resetter_getter_fqns = extractResetterGetters(resetter_fqn, project_name,
                                                       project_sha, test_fqn, field_fqn)
-        field_getter_fqns = extractFieldGetters(resetter_fqn, project_name,
-                                                project_sha, test_fqn, field_fqn)
+        # field_getter_fqns = extractFieldGetters(resetter_fqn, project_name,
+        #                                        project_sha, test_fqn, field_fqn)
         target_methods = [randoop_fmt_resetter_fqn]
         for m in resetter_getter_fqns + field_getter_fqns:
             fmt_m = convertJVMSigToDotSig(m)
@@ -397,6 +397,62 @@ def runRandoopTestGenClassLevel(project_name, project_sha, test_fqn, field_fqn, 
     insertTimeInLog(start_time, end_time, test_gen_log)
     os.chdir(cwd)
 
+def extractResetterGetters(resetter_fqn, project_name, project_sha,
+                           test_fqn, downloads_dir=_DOWNLOADS_DIR,
+                           results_dir=_RESULTS_DIR, tool_jar=TOOL_JAR,
+                           gen_tests_dir=GEN_TESTS_DIR):
+    output_dir = gen_tests_dir + '/' + project_name + '/' + project_sha + '/' + \
+        test_fqn + '/' + resetter_fqn.split('(')[0]
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+    cwd = os.getcwd()
+    os.chdir(downloads_dir + '/' + project_name)
+    analysis_log = output_dir + '/resetter-getters.txt'
+    start_time = time.time()
+    # map list resetters
+    sub.run('java -cp \"' + CP_JAR + '\"' + \
+            ' org.reseterfinder.Main' + \
+            ' -klasspath ' + downloads_dir + '/' + project_name + \
+            ' -mode find-callee-getters' + \
+            ' -resetter \"' + resetter_fqn.replace('$', '\\$') + '\"',
+            shell=True, stdout=open(analysis_log, 'w'), stderr=sub.STDOUT)
+    end_time = time.time()
+    insertTimeInLog(start_time, end_time, analysis_log)
+    os.chdir(cwd)
+    resetter_getters = []
+    with open(analysis_log, 'r') as fr:
+        lines = fr.readlines()
+    for i in range(len(lines)):
+        if lines[i].startswith('Resetter\'s Callee Getter: '):
+            resetter_getter_fqn = lines[i].strip().split()[-1]
+            if resetter_getter_fqn not in resetter_getters:
+                resetter_getters.append(resetter_getter_fqn)
+    return resetter_getters
+
+def extractFieldGetters(resetter_fqn, project_name, project_sha,
+                        test_fqn, downloads_dir=_DOWNLOADS_DIR,
+                        results_dir=_RESULTS_DIR,
+                        gen_tests_dir=GEN_TESTS_DIR):
+    output_dir = gen_tests_dir + '/' + project_name + '/' + project_sha + '/' + \
+        test_fqn + '/' + resetter_fqn.split('(')[0]
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+    cwd = os.getcwd()
+    os.chdir(downloads_dir + '/' + project_name)
+    analysis_log = output_dir + '/field-getters.txt'
+    with open(results_dir + '/' + project_name + '/' + project_sha + '/' + \
+              test_fqn + '/analysis.txt') as fr:
+        lines = fr.readlines()
+    field_getters = []
+    for i, l in enumerate(lines):
+        if ', GETSTATIC method: ' in l:
+            field_getter_fqn = l.strip().split()[-1]
+            if field_getter_fqn not in field_getters:
+                field_getters.append(field_getter_fqn)
+    with open(analysis_log, 'w') as fw:
+        for field_getter in field_getters:
+            fw.write('Field Getter: ' + field_getter + '\n')
+    return field_getters
 
 def runRandoopTestGenAllClasses(project_name, project_sha, test_fqn, field_fqn,
                                 downloads_dir=_DOWNLOADS_DIR,
