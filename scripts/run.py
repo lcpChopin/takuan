@@ -154,6 +154,31 @@ def genRandoopPrimsSpecFile(project_name, project_sha, test_fqn,
     with open(output_file, 'w') as fw:
         fw.write(output_lines)
 
+def runFindRefClasses(project_name, project_sha, test_fqn, field_fqn,
+                      downloads_dir=_DOWNLOADS_DIR, results_dir=_RESULTS_DIR,
+                      tool_jar=TOOL_JAR):
+    client_result_dir = results_dir + '/' + project_name + '/' + \
+        project_sha + '/' + test_fqn
+    if not os.path.isdir(client_result_dir):
+        os.makedirs(client_result_dir)
+    cwd = os.getcwd()
+    os.chdir(downloads_dir + '/' + project_name)
+    analysis_log = client_result_dir + '/ref-classes-trans.txt'
+    start_time = time.time()
+    classpath = downloads_dir + '/' + project_name
+    if project_name == 'spring-ws':
+        classpath += ':/tmp/jars/spring-security-core-5.0.9.RELEASE.jar'
+    if project_name == 'incubator-dubbo':
+        classpath += ':' + SCRIPT_DIR + '/libs/fst-2.48-jdk-6.jar'
+    sub.run('java -cp \"' + CP_JAR + '\"' + \
+            ' org.reseterfinder.Main' + \
+            ' -field \"' + field_fqn.replace('$', '\\$') + '\"' + \
+            ' -klasspath ' + classpath + \
+            ' -mode ref-classes-transitive',
+            shell=True, stdout=open(analysis_log, 'w'), stderr=sub.STDOUT)
+    end_time = time.time()
+    insertTimeInLog(start_time, end_time, analysis_log)
+    os.chdir(cwd)
 
 def runRandoopTestGen(project_name, project_sha, test_fqn,
                       resetter_list_dir=RESETTER_LIST_DIR,
@@ -177,12 +202,10 @@ def runRandoopTestGen(project_name, project_sha, test_fqn,
                         continue
                     shutil.copy(dir_path + '/' + sp + '/' + jar, '/tmp/jars')
     os.chdir(cwd)
-    '''
     resetters_json_file = resetter_list_dir + '/' + project_name + '/' + \
                        project_sha + '/' + test_fqn + '/resetters.json'
     with open(resetters_json_file, 'r') as fr:
         resetters = json.load(fr, object_pairs_hook=collections.OrderedDict)
-    '''
     resetters = []
     resetters.append("place_holder")
     # resetters.append("in.natelev.toyflakytests.ExternalODLogger.clearLogs()")
@@ -215,8 +238,32 @@ def runRandoopTestGenOnOneResetter(resetter_fqn, project_name, project_sha,
     test_method_num_limit = 500
     test_method_max_size = 100
     method_list_file = '/tmp/methods.txt'
-    # with open(method_list_file, 'w') as fw:
-    #     fw.write(resetter_fqn + '\n')
+    with open(method_list_file, 'w') as fw:
+        # --- Target Methods
+        randoop_fmt_resetter_fqn = convertJVMSigToDotSig(resetter_fqn)
+        # temp workaround
+        # if '$' in resetter_fqn:
+        #    resetter_fqn = resetter_fqn.split('$')[0] + '.' + \
+        #        resetter_fqn.split('$')[-1].split('.')[-1]
+        print('Randoop Format Resetter FQN: ' + randoop_fmt_resetter_fqn)
+        resetter_getter_fqns = extractResetterGetters(resetter_fqn, project_name,
+                                                      project_sha, test_fqn, field_fqn)
+        field_getter_fqns = extractFieldGetters(resetter_fqn, project_name,
+                                                project_sha, test_fqn, field_fqn)
+        target_methods = [randoop_fmt_resetter_fqn]
+        for m in resetter_getter_fqns + field_getter_fqns:
+            fmt_m = convertJVMSigToDotSig(m)
+            if fmt_m == '':
+                continue
+            if '<init>' in fmt_m or '<clinit>' in fmt_m:
+                continue
+            if '$' in fmt_m:
+                continue
+            if fmt_m not in target_methods:
+                target_methods.append(fmt_m)
+        print(target_methods)
+        for tm in target_methods:
+            fw.write(tm + '\n')
     client_result_dir = results_dir + '/' + project_name + '/' + \
                         project_sha + '/' + test_fqn
     literals_file = client_result_dir + '/literals.txt'
