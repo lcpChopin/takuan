@@ -206,17 +206,17 @@ def runRandoopTestGen(project_name, project_sha, test_fqn,
                        project_sha + '/' + test_fqn + '/resetters.json'
     with open(resetters_json_file, 'r') as fr:
         resetters = json.load(fr, object_pairs_hook=collections.OrderedDict)
-    resetters = []
-    resetters.append("place_holder")
+    # resetters = []
+    # resetters.append("in.natelev.toyflakytests.ExternalODLogger()")
+    # resetters.append("place_holder")
     # resetters.append("in.natelev.toyflakytests.ExternalODLogger.clearLogs()")
     # resetters.append("in.natelev.toyflakytests.ExternalODLogger.log(java.lang.String)")
-    for rst in resetters:
-        print('--- Generating Tests for Resetter ' + rst + ' ...')
-        runRandoopTestGenOnOneResetter(rst, project_name, project_sha,
-                                       test_fqn)
+    print('--- Generating Tests for Resetters ...')
+    runRandoopTestGenOnOneResetter(resetters, project_name, project_sha,
+                                    test_fqn)
 
 
-def runRandoopTestGenOnOneResetter(resetter_fqn, project_name, project_sha,
+def runRandoopTestGenOnOneResetter(resetters, project_name, project_sha,
                                    test_fqn, downloads_dir=_DOWNLOADS_DIR,
                                    results_dir=_RESULTS_DIR,
                                    gen_tests_dir=GEN_TESTS_DIR):
@@ -229,29 +229,26 @@ def runRandoopTestGenOnOneResetter(resetter_fqn, project_name, project_sha,
         concat_project_class_path = SCRIPT_DIR + '/libs/fst-2.48-jdk-6.jar:' + \
                                     concat_project_class_path
     # print (concat_project_class_path)
-    # set up randoop
-    output_dir = gen_tests_dir + '/' + project_name + '/' + project_sha + '/' + \
-                 test_fqn + '/' + resetter_fqn.split('(')[0]
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
-    package_name = '.'.join(test_fqn.split('.')[:-2])
     test_method_num_limit = 500
     test_method_max_size = 100
     method_list_file = '/tmp/methods.txt'
-    with open(method_list_file, 'w') as fw:
+    target_methods = []
+    for resetter_fqn in resetters:
+        # set up randoop
+        output_dir = gen_tests_dir + '/' + project_name + '/' + project_sha + '/' + \
+                 test_fqn + '/' + resetter_fqn.split('(')[0]
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+        package_name = '.'.join(test_fqn.split('.')[:-2])
         # --- Target Methods
         randoop_fmt_resetter_fqn = convertJVMSigToDotSig(resetter_fqn)
-        # temp workaround
-        # if '$' in resetter_fqn:
-        #    resetter_fqn = resetter_fqn.split('$')[0] + '.' + \
-        #        resetter_fqn.split('$')[-1].split('.')[-1]
         print('Randoop Format Resetter FQN: ' + randoop_fmt_resetter_fqn)
         resetter_getter_fqns = extractResetterGetters(resetter_fqn, project_name,
-                                                      project_sha, test_fqn, field_fqn)
+                                                    project_sha, test_fqn)
         # field_getter_fqns = extractFieldGetters(resetter_fqn, project_name,
         #                                        project_sha, test_fqn, field_fqn)
-        target_methods = [randoop_fmt_resetter_fqn]
-        for m in resetter_getter_fqns + field_getter_fqns:
+        target_methods.append(randoop_fmt_resetter_fqn)
+        for m in resetter_getter_fqns: # + field_getter_fqns:
             fmt_m = convertJVMSigToDotSig(m)
             if fmt_m == '':
                 continue
@@ -261,9 +258,13 @@ def runRandoopTestGenOnOneResetter(resetter_fqn, project_name, project_sha,
                 continue
             if fmt_m not in target_methods:
                 target_methods.append(fmt_m)
-        print(target_methods)
+    with open(method_list_file, 'w') as fw:
         for tm in target_methods:
             fw.write(tm + '\n')
+    output_dir = gen_tests_dir + '/' + project_name + '/' + project_sha + '/' + \
+                 test_fqn + '/MTHD_LV'
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
     client_result_dir = results_dir + '/' + project_name + '/' + \
                         project_sha + '/' + test_fqn
     literals_file = client_result_dir + '/literals.txt'
