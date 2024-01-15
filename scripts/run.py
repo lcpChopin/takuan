@@ -267,7 +267,7 @@ def runRandoopTestGenOnOneResetter(resetters, project_name, project_sha,
         os.makedirs(output_dir)
     client_result_dir = results_dir + '/' + project_name + '/' + \
                         project_sha + '/' + test_fqn
-    literals_file = client_result_dir + '/literals.txt'
+    # literals_file = client_result_dir + '/literals.txt'
     # randoop_cmd = 'java -ea -classpath ' + RANDOOP_JAR + ':' + \
     #     JUNIT_JAR + ':' + HAMCREST_JAR + ':' + GUAVA_JAR + ':' + \
     #     concat_project_class_path + \
@@ -292,7 +292,6 @@ def runRandoopTestGenOnOneResetter(resetters, project_name, project_sha,
                   + ' --junit-output-dir=' + output_dir \
                   + ' --regression-test-basename=TestGroup' \
                   + str(test_method_max_size) + 'Case' \
-                  + ' --literals-file=' + literals_file \
                   + ' --literals-level=ALL'
                   # + ' --literals-file=' + literals_file \
                   # + ' --literals-level=ALL'
@@ -350,7 +349,7 @@ def runRandoopTestGenClassLevel(project_name, project_sha, test_fqn, field_fqn, 
     test_method_max_size = 100
     class_list_file = '/tmp/classes.txt'
     method_list_file = '/tmp/methods.txt'
-    '''
+    
     ref_classes = []
     ref_classes_log_file = results_dir + '/' + project_name + '/' + project_sha + \
                            '/' + test_fqn + '/ref-classes-trans.txt'
@@ -372,7 +371,7 @@ def runRandoopTestGenClassLevel(project_name, project_sha, test_fqn, field_fqn, 
             if '$' in rc:
                 rc = rc.split('$')[0]
             fw.write(rc + '\n')
-    '''
+    
     client_result_dir = results_dir + '/' + project_name + '/' + \
                         project_sha + '/' + test_fqn
     # literals_file = client_result_dir + '/literals0.txt'
@@ -708,8 +707,10 @@ def runExp():
         cloneProject(project_name, project_url, project_sha)
         buildProject(project_name, project_sha, project_module, test_fqn)
 
-        runRandoopTestGen(project_name, project_sha, test_fqn)
-        # runRandoopTestGenClassLevel(project_name, project_sha, test_fqn, method_fqn, project_module)
+        runFindRefClasses(project_name, project_sha, test_fqn, method_fqn)
+
+        # runRandoopTestGen(project_name, project_sha, test_fqn)
+        runRandoopTestGenClassLevel(project_name, project_sha, test_fqn, method_fqn, project_module)
         # runRandoopTestGenAllClasses(project_name, project_sha, test_fqn, field_fqn)
         # runEvoSuiteTestGen(project_name, project_sha, test_fqn, field_fqn)
 
