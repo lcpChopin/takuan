@@ -8,7 +8,8 @@ if [ "$1" = "" ] || [ "$2" = "" ] || [ "$3" = "" ] || [ "$4" = "" ] || [ "$5" = 
 fi
 
 cwd="$(pwd)"
-takuanRootDir="$(dirname "$0")"
+takuanRootDir="$(dirname $(readlink -f "$0"))"
+echo ${takuanRootDir}
 scriptsDir="$takuanRootDir/scripts"
 gitURL="$1"
 gitRepoName="$(basename "$gitURL" .git)"
@@ -62,6 +63,7 @@ fi
 PROBLEM_INVARIANTS_OUTPUT="$cwd/tmp-$gitRepoName-problem-invariants.pvi"
 if [[ -z "${NO_DIFF}" ]]; then
     PROBLEM_INV_START_TIME=$(date +%s)
+    echo ${cwd}
     if ! java -cp "$takuanRootDir/target/classes:$DAIKONDIR/daikon.jar" -Xmx6g -XX:+UseG1GC in.natelev.daikondiffvictimpolluter.DaikonDiffVictimPolluter daikon-pv.inv daikon-victim.inv daikon-polluter.inv \
         -o "$cwd/$gitRepoName.dinv" --problem-invariants-output "$PROBLEM_INVARIANTS_OUTPUT"
     then

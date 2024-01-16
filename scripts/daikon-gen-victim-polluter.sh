@@ -2,8 +2,9 @@
 
 trap "exit" INT
 
-scriptsDir="$(dirname "$0")"
+scriptsDir="$(dirname $(readlink -f "$0"))"
 
+DAIKONDIR=${scriptsDir}/../../daikon
 # if [[ -z "${NO_DYNCOMP}" ]]; then
 #     COMPARABILITY_FILE='--comparability-file=Runner.decls-DynComp'
 # else
@@ -54,7 +55,7 @@ run_daikon() {
 
     echo "Running Daikon..."
 
-    java -XX:MaxRAMPercentage=50.0 -cp $DAIKONDIR/daikon.jar daikon.Daikon Runner.dtrace.gz >"daikon-$TYPE.log"
+    java -cp $DAIKONDIR/daikon.jar daikon.Daikon Runner.dtrace.gz >"daikon-$TYPE.log"
 
     mv Runner.inv.gz "daikon-$TYPE.inv.gz"
 
