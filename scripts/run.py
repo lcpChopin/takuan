@@ -20,7 +20,7 @@ RESETTER_LIST_DIR = SCRIPT_DIR + '/resetters'
 GEN_TESTS_DIR = SCRIPT_DIR + '/gen_tests'
 EVO_GEN_TESTS_DIR = SCRIPT_DIR + '/evo_gen_tests'
 
-EXP_CSV = SCRIPT_DIR + '/result.csv'
+EXP_CSV = SCRIPT_DIR + '/1.csv'
 CP_JAR = SCRIPT_DIR + '/libs/commons-cli-1.3.1.jar:' + SCRIPT_DIR + '/libs/commons-io-2.4.jar:' + SCRIPT_DIR + '/libs/hamcrest-core-1.3.jar:' + SCRIPT_DIR + '/libs/commons-codec-1.6.jar:' + SCRIPT_DIR + '/libs/junit-4.12.jar:' + SCRIPT_DIR + '/libs/bcel-6.3.jar:' + '${HOME}/.m2/repository/org/reset-finder/reset-finder/1.0-SNAPSHOT/reset-finder-1.0-SNAPSHOT.jar'
 RANDOOP_JAR = SCRIPT_DIR + '/libs/randoop-all-4.2.6.jar'
 JUNIT_JAR = SCRIPT_DIR + '/libs/junit-4.13.2.jar'
@@ -128,6 +128,30 @@ def getAllClassPathsInDir(path):
     # concat_class_path += '$(for f in $(find -name dependency); do echo -n \":${f}/*.jar\"; done)'
     # concat_class_path = concat_class_path[:-1]
     return concat_class_path
+
+def runMinePrims(project_name, project_sha, test_fqn, field_fqn,
+                 downloads_dir=_DOWNLOADS_DIR, results_dir=_RESULTS_DIR,
+                 tool_jar=TOOL_JAR):
+    client_result_dir = results_dir + '/' + project_name + '/' + \
+        project_sha + '/' + test_fqn
+    if not os.path.isdir(client_result_dir):
+        os.makedirs(client_result_dir)
+    cwd = os.getcwd()
+    os.chdir(downloads_dir + '/' + project_name)
+    analysis_log = client_result_dir + '/prims.txt'
+    start_time = time.time()
+    # map list resetters
+    sub.run('java -cp \"' + CP_JAR + '\"' + \
+            ' org.reseterfinder.Main' + \
+            ' -field \"' + field_fqn.replace('$', '\\$') + '\"' + \
+            ' -klasspath ' + downloads_dir + '/' + project_name + \
+            ' -mode mine-prims' + \
+            ' -test \"' + test_fqn.replace('$', '\\$') + '\"',
+            shell=True, stdout=open(analysis_log, 'w'), stderr=sub.STDOUT)
+    end_time = time.time()
+    insertTimeInLog(start_time, end_time, analysis_log)
+    genRandoopPrimsSpecFile(project_name, project_sha, test_fqn)
+    os.chdir(cwd)
 
 def genRandoopPrimsSpecFile(project_name, project_sha, test_fqn,
                             results_dir=_RESULTS_DIR):
@@ -706,6 +730,8 @@ def runExp():
                 continue
         cloneProject(project_name, project_url, project_sha)
         buildProject(project_name, project_sha, project_module, test_fqn)
+
+        runMinePrims(project_name, project_sha, test_fqn, method_fqn)
 
         runFindRefClasses(project_name, project_sha, test_fqn, method_fqn)
 
