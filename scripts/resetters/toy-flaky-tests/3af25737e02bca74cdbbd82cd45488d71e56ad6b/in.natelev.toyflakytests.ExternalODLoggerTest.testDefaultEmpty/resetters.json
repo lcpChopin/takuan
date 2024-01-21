@@ -1,0 +1,5 @@
+[
+    "in.natelev.toyflakytests.ExternalODLogger.<init>()V",
+    "in.natelev.toyflakytests.ExternalODLogger.log(Ljava/lang/String;)V",
+    "in.natelev.toyflakytests.ExternalODLogger.clearLogs()V"
+]
